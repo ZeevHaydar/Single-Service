@@ -1,0 +1,23 @@
+{
+  "development":{
+    "username" : "nazhifhaidar",
+    "password" : "123Haidar!",
+    "database" : "singleservice",
+    "host" : "127.0.0.1",
+    "dialect": "mysql"
+    },
+  "test":{
+    "username" : "root",
+    "password" : "123Haidar!",
+    "database" : "monolith",
+    "host" : "127.0.0.1",
+    "dialect": "mysql"       
+    },
+  "production": {
+    "username": "root",
+    "password": "123Haidar!",
+    "database": "monolith",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  }
+}
