@@ -8,7 +8,7 @@
 ketik command ```node .``` atau ```nodemon``` di root directory project ini
 
 ## Cara melakukan migrasi dan seeding
-- Pergi ke folder ```databasee```
+- Pergi ke folder ```database```
 - ketik pada CLI ```sequelize db:migrate``` untuk migrasi, sedangkan untuk seeding ketik ```sequelize db:seed:all```
 
 ## Design Pattern
