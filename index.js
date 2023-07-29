@@ -166,21 +166,9 @@ app.post('/barang', async (req, res) => {
             perusahaan_id,
             kode,
         });
-        // connection.query(insertBarangQuery, [values, nama, harga, stok, perusahaan_id, kode], (err, result) =>{
-        //     if (err) throw err;
-        //     res.status(201).json({
-        //         status: "success",
-        //         message: "barang added",
-        //         data: {
-        //             id: result.insertId,
-        //             nama,
-        //             harga,
-        //             stok,
-        //             kode,
-        //             perusahaan_id
-        //         }
-        //     });
-        // });
+
+        const response = new Response('success', 'Barang added', newBarang);
+        res.status(201).json(response);
     } catch(err){
         res.status(400).json({
             status: 'error',
@@ -193,12 +181,25 @@ app.post('/barang', async (req, res) => {
 app.put('/barang/:id', async (req, res) => {
     try{
         const {nama, harga, stok, perusahaan_id, kode} = req.body;
-        const updateBarangQuery = `UPDATE barang SET nama = ?, harga = ?, stok = ?, perusahaan_id = ?, kode = ? WHERE id = ?`;
-        connection.query(updateBarangQuery, [nama, harga, stok, perusahaan_id, kode, req.params.id], (err, result) =>{
-            if (err) throw err;
-            const response = new Response("success", 'Data berhasil diupdate', result);
-            res.status(201).json(response);
+        const updateBarang = await perusahaan.update({
+            nama,
+            harga,
+            stok,
+            perusahaan_id,
+            kode
+        }, {
+            where: {id: req.params.id}
         })
+
+        if (updateBarang[0]=== 0){
+            return res.status(404).json({
+                status: 'error',
+                message: 'Barang not found',
+                data: {}
+            });
+        }
+        const response = new Response("success", 'Data berhasil diupdate', result);
+        res.status(201).json(response);
     }catch(err){
         res.status(400).json({
             status: 'error',
@@ -209,37 +210,44 @@ app.put('/barang/:id', async (req, res) => {
 });
 
 app.delete('/barang/:id', async (req, res) => {
-    try{
-        const deleteBarangQuery = `DELETE FROM barang WHERE id = ?`;
-        connection.query(deleteBarangQuery, [req.params.id], (err, result) =>{
-            if (err) throw err;
-            const response = new Response('success', 'barang deleted', result);
-            res.status(201).json(response);
-        })
-    }catch(err){
-        const response = new Response('error', err.message, null);
-        res.json(response);
-    }
+    try {
+        const deletedBarang = await barang.destroy({ where: { id: req.params.id } });
+
+        if (deletedBarang === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Barang not found',
+                data: {}
+            });
+        }
+
+        const response = new Response('success', 'Barang deleted', deletedBarang);
+        res.status(201).json(response);
+    } catch (err) {
+        res.status(400).json({
+            status: 'error',
+            message: err.message,
+            data: {}
+        });
+    }   
 });
 
 app.get('/perusahaan', async (req, res) => {
-    try{
-        const {q}= req.query;
-        let query = 'SELECT * FROM perusahaan';
+     try {
+        const { q } = req.query;
+        const whereCondition = {};
 
-        if (q){
-            query += ` WHERE nama LIKE '%${q}%' OR kode LIKE '%${q}%'`
+        if (q) {
+            whereCondition.nama = { [Op.like]: `%${q}%` };
         }
 
-        connection.query(query, (err, result) => {
-            if (err) throw err;
-            res.json({
-                status: 'success',
-                message: 'Perusahaan retrieved',
-                data: result
-            });
+        const perusahaanList = await perusahaan.findAll({
+            where: whereCondition,
         });
-    } catch (err){
+
+        const response = new Response('success', 'Perusahaan retrieved', perusahaanList);
+        res.status(201).json(response);
+    } catch (err) {
         res.status(400).json({
             status: 'error',
             message: err.message,
@@ -249,17 +257,21 @@ app.get('/perusahaan', async (req, res) => {
 });
 
 app.get('/perusahaan/:id', async (req, res) => {
-    try{
-        const query = `SELECT * FROM perusahaan WHERE id = '${req.params.id}'`;
-        connection.query(query, (err, result) => {
-            if (err) throw err;
-            res.json({
-                status: 'success',
-                message: 'Perusahaan retrieved',
-                data: result
+    try {
+        const whereCondition = { id: req.params.id };
+        const perusahaanData = await perusahaan.findOne({ where: whereCondition });
+
+        if (!perusahaanData) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Perusahaan not found',
+                data: {}
             });
-        });
-    } catch(err){
+        }
+
+        const response = new Response('success', 'Perusahaan retrieved', perusahaanData);
+        res.status(201).json(response);
+    } catch (err) {
         res.status(400).json({
             status: 'error',
             message: err.message,
@@ -269,47 +281,82 @@ app.get('/perusahaan/:id', async (req, res) => {
 });
 
 app.post('/perusahaan', async (req, res) => {
-    try{
-        const insertPerusahaanQuery = 'INSERT INTO perusahaan(id, nama, alamat, no_telp, kode) VALUES (?, ?, ?, ?, ?)';
-        const {nama, alamat, no_telp, kode} = req.body;
-        const value = generateUUID();
-        connection.query(insertPerusahaanQuery, [value, nama, alamat, no_telp, kode], (err, result) => {
-            if (err) throw err;
-            const response = new Response('success', 'berhasil menambah perusahaan', result);
-            res.status(201).json(response);
-        })
-    }
-    catch(err){
-        res.status(400).json(new Response('error', err.message, null));
+    try {
+        const { nama, alamat, no_telp, kode } = req.body;
+
+        const newPerusahaan = await perusahaan.create({
+            id: generateUUID(),
+            nama,
+            alamat,
+            no_telp,
+            kode
+        });
+
+        const response = new Response('success', 'Perusahaan added', newPerusahaan);
+        res.status(201).json(response);
+    } catch (err) {
+        res.status(400).json({
+            status: 'error',
+            message: err.message,
+            data: {}
+        });
     }
 
 });
 
 app.put('/perusahaan/:id', async (req, res) => {
-    try{
-        const {nama, alamat, no_telp, kode} = req.body;
-        const updateQuery = `UPDATE perusahaan SET nama = ?, alamat = ?, no_telp = ?, kode = ? WHERE id = ?`;
-        connection.query(updateQuery, [nama, alamat, no_telp,  kode, req.params.id], (err, result) =>{
-            if (err) throw err;
-            const response = new Response("success", 'Data perusahaan berhasil diupdate', result);
-            res.status(201).json(response);
-        })
-    }catch(err){
-        res.status(400).json(new Response('error', err.message, {}));
-    }    
+    try {
+        const { nama, alamat, no_telp, kode } = req.body;
+        const whereCondition = { id: req.params.id };
+        const updatedPerusahaan = await perusahaan.update({
+            nama,
+            alamat,
+            no_telp,
+            kode
+        }, {
+            where: whereCondition
+        });
+
+        if (updatedPerusahaan[0] === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Perusahaan not found',
+                data: {}
+            });
+        }
+
+        const response = new Response('success', 'Perusahaan updated', updatedPerusahaan);
+        res.status(201).json(response);
+    } catch (err) {
+        res.status(400).json({
+            status: 'error',
+            message: err.message,
+            data: {}
+        });
+    }
 });
 
 app.delete('/perusahaan/:id', async (req, res) => {
-    try{
-        const deleteQuery = `DELETE FROM perusahaan WHERE id = ?`;
-        connection.query(deleteQuery, [req.params.id], (err, result) =>{
-            if (err) throw err;
-            const response = new Response('success', 'perusahaan deleted', result);
-            res.status(201).json(response);
-        })
-    }catch(err){
-        const response = new Response('error', err.message, {});
-        res.json(response);
+    try {
+        const whereCondition = { id: req.params.id };
+        const deletedPerusahaan = await perusahaan.destroy({ where: whereCondition });
+
+        if (deletedPerusahaan === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Perusahaan not found',
+                data: {}
+            });
+        }
+
+        const response = new Response('success', 'Perusahaan deleted', deletedPerusahaan);
+        res.status(201).json(response);
+    } catch (err) {
+        res.status(400).json({
+            status: 'error',
+            message: err.message,
+            data: {}
+        });
     }
 });
 
